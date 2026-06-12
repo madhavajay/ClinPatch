@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>ClinPatch Browser Demo</title>
+    <title>ClinPatch GRCh38 Browser Demo</title>
     <style>
       body {
         margin: 24px;
@@ -25,8 +25,8 @@
     </style>
   </head>
   <body>
-    <h1>ClinPatch Browser Demo</h1>
-    <button id="run">Fetch BRCA1 From Raw GitHub</button>
+    <h1>ClinPatch GRCh38 Browser Demo</h1>
+    <button id="run">Fetch BRCA1 GRCh38 From Raw GitHub</button>
     <pre id="out">Ready.</pre>
 
     <script src="../js/clinpatch.global.js"></script>
@@ -37,6 +37,7 @@
       run.addEventListener("click", async () => {
         out.textContent = "Fetching...";
         const client = new ClinPatch.ClinPatchClient({
+          assembly: "GRCh38",
           rawBase: "https://raw.githubusercontent.com/madhavajay/ClinPatch/main/public/chunks-brca1",
           geneIndexUrl: "https://raw.githubusercontent.com/madhavajay/ClinPatch/main/public/genes/gencode.v50.GRCh38.genes.json",
         });

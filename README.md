@@ -8,11 +8,14 @@ The first working target is GRCh38 ClinVar split into GitHub-sized chromosome/co
 
 Paste this into any browser page. It loads the browser global build, fetches the raw GitHub manifest and indexes, then uses HTTP byte ranges to fetch only the matching ClinVar VCF rows.
 
+The hosted demo data and gene coordinates in these examples are **GRCh38**. The client defaults to `assembly: "GRCh38"` and validates it against the chunk manifest, but the examples pass it explicitly so the coordinate system is visible at the call site.
+
 ```html
 <script src="https://cdn.jsdelivr.net/gh/madhavajay/ClinPatch@main/js/clinpatch.global.js"></script>
 <script>
   async function loadBrca1Clinvar() {
     const client = new ClinPatch.ClinPatchClient({
+      assembly: "GRCh38",
       rawBase: "https://raw.githubusercontent.com/madhavajay/ClinPatch/main/public/chunks-brca1",
       geneIndexUrl: "https://raw.githubusercontent.com/madhavajay/ClinPatch/main/public/genes/gencode.v50.GRCh38.genes.json",
     });
@@ -45,6 +48,7 @@ The same API can query a coordinate range directly:
 <script>
   async function logPathogenicRows() {
     const client = new ClinPatch.ClinPatchClient({
+      assembly: "GRCh38",
       rawBase: "https://raw.githubusercontent.com/madhavajay/ClinPatch/main/public/chunks-brca1",
     });
 
@@ -168,7 +172,7 @@ curl -H "Range: bytes=$POS_START-$POS_END" \
 
 ## Raw GitHub Range Query Example
 
-This example does not use the Rust tool or a local server. It curls the manifest from raw GitHub, finds chunks overlapping a chromosome interval, curls the matching position indexes from raw GitHub, then curls byte ranges from the raw GitHub chunk VCF files.
+This GRCh38 example does not use the Rust tool or a local server. It curls the manifest from raw GitHub, finds chunks overlapping a chromosome interval, curls the matching position indexes from raw GitHub, then curls byte ranges from the raw GitHub chunk VCF files.
 
 ```sh
 RAW_BASE="https://raw.githubusercontent.com/madhavajay/ClinPatch/main/public/chunks-brca1"
@@ -207,7 +211,7 @@ That interval returns real BRCA1 ClinVar VCF rows from the committed GRCh38 demo
 
 ## Raw GitHub BRCA1 Query Example
 
-This example resolves BRCA1 through a static GENCODE v50 GRCh38 gene index, then fetches a small BRCA1 ClinVar window from raw GitHub.
+This example resolves BRCA1 through a static GENCODE v50 GRCh38 gene index, then fetches a small GRCh38 BRCA1 ClinVar window from raw GitHub.
 
 The easiest way to run this demo is:
 
@@ -268,7 +272,7 @@ done
 
 ## Browser Library
 
-GitHub raw files work as the static data host because `raw.githubusercontent.com` sends CORS headers and supports byte ranges. Browser JavaScript can fetch the manifest, sidecar indexes, and VCF byte ranges directly.
+GitHub raw files work as the static data host because `raw.githubusercontent.com` sends CORS headers and supports byte ranges. Browser JavaScript can fetch the manifest, sidecar indexes, and VCF byte ranges directly. The committed demo chunk set is GRCh38.
 
 Use a package/CDN URL for the JavaScript itself. Raw GitHub is useful for data, but browsers require JavaScript MIME types for module imports. The plain script-tag build exposes `window.ClinPatch`; the ES module build exports the same API.
 
@@ -277,7 +281,7 @@ Script-tag global:
 ```html
 <script src="https://cdn.jsdelivr.net/gh/madhavajay/ClinPatch@main/js/clinpatch.global.js"></script>
 <script>
-  const client = new ClinPatch.ClinPatchClient();
+  const client = new ClinPatch.ClinPatchClient({ assembly: "GRCh38" });
 </script>
 ```
 
@@ -288,6 +292,7 @@ ES module:
   import { ClinPatchClient } from "https://cdn.jsdelivr.net/gh/madhavajay/ClinPatch@main/js/clinpatch.js";
 
   const client = new ClinPatchClient({
+    assembly: "GRCh38",
     rawBase: "https://raw.githubusercontent.com/madhavajay/ClinPatch/main/public/chunks-brca1",
   });
 

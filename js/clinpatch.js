@@ -2,9 +2,11 @@ const DEFAULT_RAW_BASE =
   "https://raw.githubusercontent.com/madhavajay/ClinPatch/main/public/chunks-brca1";
 const DEFAULT_GENE_INDEX =
   "https://raw.githubusercontent.com/madhavajay/ClinPatch/main/public/genes/gencode.v50.GRCh38.genes.json";
+export const DEFAULT_ASSEMBLY = "GRCh38";
 
 export class ClinPatchClient {
   constructor(options = {}) {
+    this.assembly = options.assembly || DEFAULT_ASSEMBLY;
     this.rawBase = (options.rawBase || DEFAULT_RAW_BASE).replace(/\/$/, "");
     this.geneIndexUrl = options.geneIndexUrl || DEFAULT_GENE_INDEX;
     this.fetch = options.fetch || globalThis.fetch;
@@ -19,6 +21,11 @@ export class ClinPatchClient {
   async manifest() {
     if (!this._manifest) {
       this._manifest = await this.#fetchJson(`${this.rawBase}/manifest.json`);
+      if (this._manifest.assembly && this._manifest.assembly !== this.assembly) {
+        throw new Error(
+          `manifest assembly ${this._manifest.assembly} does not match requested assembly ${this.assembly}`,
+        );
+      }
     }
     return this._manifest;
   }
