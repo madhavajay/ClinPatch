@@ -1,0 +1,17 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "clinpatch-query"
+version = "0.1.0"
+description = "Static ClinVar range queries from ClinPatch chunk manifests"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+
+[project.scripts]
+clinpatch-query = "clinpatch_query.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["py/clinpatch_query"]

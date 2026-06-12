@@ -7,7 +7,7 @@
   "max_bytes": 45000000,
   "row_stride": 128,
   "chunk_count": 1,
-  "row_count": 15141,
+  "row_count": 75,
   "chunks": [
     {
       "chrom": "17",
@@ -18,9 +18,9 @@
       "rows_index": "chunks/17/000043000001-000044000000.vcf.rows.json",
       "ids_index": "chunks/17/000043000001-000044000000.vcf.ids.json",
       "positions_index": "chunks/17/000043000001-000044000000.vcf.positions.json",
-      "file_size": 8844284,
-      "row_count": 15141,
-      "file_hash_sha256": "22d502e831a8dc10f7d60814f737151d17b46bdc1fddcd888483cffe14f74122"
+      "file_size": 60469,
+      "row_count": 75,
+      "file_hash_sha256": "7e004156ec86a5489ae22716f12636be787416a19150692afde07d20fe2f7109"
     }
   ]
 }

@@ -17,8 +17,8 @@ RAW_BASE = os.environ.get(
 # BRCA1 from GENCODE v50 GRCh38:
 # BRCA1 ENSG00000012048.28 chr17:43044292-43170245 (-)
 CHROM = os.environ.get("CHROM", "17")
-START_POS = int(os.environ.get("START_POS", "43044292"))
-END_POS = int(os.environ.get("END_POS", "43170245"))
+START_POS = int(os.environ.get("START_POS", "43044293"))
+END_POS = int(os.environ.get("END_POS", "43045642"))
 
 
 def fetch_json(url: str):

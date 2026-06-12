@@ -1,0 +1,19 @@
+{
+  "name": "@madhavajay/clinpatch",
+  "version": "0.1.0",
+  "description": "Static ClinVar range queries from ClinPatch chunk manifests",
+  "type": "module",
+  "exports": {
+    ".": "./js/clinpatch.js",
+    "./global": "./js/clinpatch.global.js"
+  },
+  "bin": {
+    "clinpatch-query": "./bin/clinpatch-query.mjs"
+  },
+  "files": [
+    "bin/",
+    "js/",
+    "README.md"
+  ],
+  "license": "MIT"
+}

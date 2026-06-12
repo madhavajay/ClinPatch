@@ -4,6 +4,69 @@ Rust CLI for generating ClinVar release patches and static HTTP range-query file
 
 The first working target is GRCh38 ClinVar split into GitHub-sized chromosome/coordinate chunks. Each chunk is a plain VCF with sidecar byte indexes, so a static host only needs ordinary `GET`, `HEAD`, and `Range` support.
 
+## Quick Start: Browser Script Tag
+
+Paste this into any browser page. It loads the browser global build, fetches the raw GitHub manifest and indexes, then uses HTTP byte ranges to fetch only the matching ClinVar VCF rows.
+
+```html
+<script src="https://cdn.jsdelivr.net/gh/madhavajay/ClinPatch@main/js/clinpatch.global.js"></script>
+<script>
+  async function loadBrca1Clinvar() {
+    const client = new ClinPatch.ClinPatchClient({
+      rawBase: "https://raw.githubusercontent.com/madhavajay/ClinPatch/main/public/chunks-brca1",
+      geneIndexUrl: "https://raw.githubusercontent.com/madhavajay/ClinPatch/main/public/genes/gencode.v50.GRCh38.genes.json",
+    });
+
+    const rows = [];
+    for await (const row of client.queryGene("BRCA1", {
+      start: 43044293,
+      end: 43045642,
+      format: "json",
+      limit: 5,
+    })) {
+      rows.push({
+        id: row.id,
+        location: `${row.chrom}:${row.pos}`,
+        allele: `${row.ref}>${row.alt}`,
+        significance: row.info.CLNSIG || "",
+        raw: row.raw,
+      });
+    }
+    return rows;
+  }
+
+  loadBrca1Clinvar().then(console.log).catch(console.error);
+</script>
+```
+
+The same API can query a coordinate range directly:
+
+```html
+<script>
+  async function logPathogenicRows() {
+    const client = new ClinPatch.ClinPatchClient({
+      rawBase: "https://raw.githubusercontent.com/madhavajay/ClinPatch/main/public/chunks-brca1",
+    });
+
+    for await (const row of client.queryRegion("17:43044293-43045642", {
+      format: "json",
+      filter: (row) => row.info.CLNSIG?.includes("Pathogenic"),
+    })) {
+      console.log(row.raw);
+    }
+  }
+
+  logPathogenicRows().catch(console.error);
+</script>
+```
+
+For a local smoke test:
+
+```sh
+python3 -m http.server 9000
+open http://127.0.0.1:9000/public/browser-demo.html
+```
+
 ## Build Locally
 
 ```sh
@@ -109,9 +172,9 @@ This example does not use the Rust tool or a local server. It curls the manifest
 
 ```sh
 RAW_BASE="https://raw.githubusercontent.com/madhavajay/ClinPatch/main/public/chunks-brca1"
-CHROM="1"
-START_POS=1041000
-END_POS=1054000
+CHROM="17"
+START_POS=43044293
+END_POS=43045642
 
 MANIFEST="$(curl -fsSL "$RAW_BASE/manifest.json")"
 
@@ -140,11 +203,11 @@ while read -r CHUNK; do
 done
 ```
 
-That interval returns real ClinVar VCF rows from the committed GRCh38 sample chunk files.
+That interval returns real BRCA1 ClinVar VCF rows from the committed GRCh38 demo chunk files.
 
 ## Raw GitHub BRCA1 Query Example
 
-This example resolves a gene symbol through a static GENCODE v50 GRCh38 gene index, then uses simple coordinate overlap to fetch ClinVar rows from raw GitHub.
+This example resolves BRCA1 through a static GENCODE v50 GRCh38 gene index, then fetches a small BRCA1 ClinVar window from raw GitHub.
 
 The easiest way to run this demo is:
 
@@ -164,15 +227,17 @@ It uses GENCODE's GRCh38 coordinates, not gnomAD-derived gene mapping.
 ```sh
 RAW_BASE="https://raw.githubusercontent.com/madhavajay/ClinPatch/main/public/chunks-brca1"
 GENE_INDEX_URL="https://raw.githubusercontent.com/madhavajay/ClinPatch/main/public/genes/gencode.v50.GRCh38.genes.json"
-GENE="AGRN"
+GENE="BRCA1"
 
 GENE_RECORD="$(curl -fsSL "$GENE_INDEX_URL" |
   jq -c --arg gene "$GENE" '.genes[] | select(.symbol_norm == ($gene | ascii_upcase))' |
   head -n 1)"
 
 CHROM="$(printf '%s' "$GENE_RECORD" | jq -r '.chrom')"
-START_POS="$(printf '%s' "$GENE_RECORD" | jq -r '.start')"
-END_POS="$(printf '%s' "$GENE_RECORD" | jq -r '.end')"
+# Full GENCODE v50 BRCA1 is 17:43044292-43170245.
+# The committed demo chunk intentionally hosts a smaller BRCA1 window.
+START_POS=43044293
+END_POS=43045642
 
 MANIFEST="$(curl -fsSL "$RAW_BASE/manifest.json")"
 
@@ -199,6 +264,83 @@ while read -r CHUNK; do
     curl -fsSL --range "$OFFSET-$END_BYTE" "$RAW_BASE/$DATA_FILE"
   done
 done
+```
+
+## Browser Library
+
+GitHub raw files work as the static data host because `raw.githubusercontent.com` sends CORS headers and supports byte ranges. Browser JavaScript can fetch the manifest, sidecar indexes, and VCF byte ranges directly.
+
+Use a package/CDN URL for the JavaScript itself. Raw GitHub is useful for data, but browsers require JavaScript MIME types for module imports. The plain script-tag build exposes `window.ClinPatch`; the ES module build exports the same API.
+
+Script-tag global:
+
+```html
+<script src="https://cdn.jsdelivr.net/gh/madhavajay/ClinPatch@main/js/clinpatch.global.js"></script>
+<script>
+  const client = new ClinPatch.ClinPatchClient();
+</script>
+```
+
+ES module:
+
+```html
+<script type="module">
+  import { ClinPatchClient } from "https://cdn.jsdelivr.net/gh/madhavajay/ClinPatch@main/js/clinpatch.js";
+
+  const client = new ClinPatchClient({
+    rawBase: "https://raw.githubusercontent.com/madhavajay/ClinPatch/main/public/chunks-brca1",
+  });
+
+  for await (const row of client.queryGene("BRCA1", {
+    start: 43044293,
+    end: 43045642,
+    format: "json",
+    limit: 5,
+  })) {
+    console.log(row.id, row.chrom, row.pos, row.info.CLNSIG);
+  }
+</script>
+```
+
+You can also filter while streaming:
+
+```js
+for await (const row of client.queryRegion("17:43044293-43045642", {
+  format: "json",
+  filter: (row) => row.info.CLNSIG?.includes("Pathogenic"),
+})) {
+  console.log(row.raw);
+}
+```
+
+## NPX CLI
+
+From this repository checkout:
+
+```sh
+npx . --gene BRCA1 --format jsonl --limit 5
+npx . --region 17:43044293-43045642 --format vcf --limit 5
+```
+
+After publishing to npm, this becomes:
+
+```sh
+npx @madhavajay/clinpatch --gene BRCA1 --format jsonl --limit 5
+```
+
+## UVX CLI
+
+From this repository checkout:
+
+```sh
+PYTHONPATH=py python -m clinpatch_query --gene BRCA1 --format jsonl --limit 5
+PYTHONPATH=py python -m clinpatch_query --region 17:43044293-43045642 --format vcf --limit 5
+```
+
+After publishing to PyPI, this becomes:
+
+```sh
+uvx clinpatch-query --gene BRCA1 --format jsonl --limit 5
 ```
 
 ## Patch Streams

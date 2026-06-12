@@ -1,4 +1,6 @@
 /target/
+__pycache__/
+*.py[cod]
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
