@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 import json
 import os
+import signal
 import sys
 import urllib.error
 import urllib.request
+
+signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 
 RAW_BASE = os.environ.get(
