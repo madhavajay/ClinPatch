@@ -90,11 +90,31 @@ enum Command {
         #[command(subcommand)]
         command: ChunksCommand,
     },
+    Genes {
+        #[command(subcommand)]
+        command: GenesCommand,
+    },
     Serve {
         #[arg(long, default_value = ".")]
         root: PathBuf,
         #[arg(long, default_value = "127.0.0.1:8000")]
         bind: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum GenesCommand {
+    Build {
+        gtf: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long, default_value = "GRCh38")]
+        assembly: String,
+        #[arg(
+            long,
+            default_value = "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_50/gencode.v50.annotation.gtf.gz"
+        )]
+        source_url: String,
     },
 }
 
@@ -272,6 +292,28 @@ struct ChunkManifestEntry {
     file_hash_sha256: String,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+struct GeneIndex {
+    format: String,
+    version: u32,
+    assembly: String,
+    source_url: String,
+    gene_count: u64,
+    genes: Vec<GeneIndexEntry>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct GeneIndexEntry {
+    symbol: String,
+    symbol_norm: String,
+    gene_id: String,
+    gene_type: String,
+    chrom: String,
+    start: u64,
+    end: u64,
+    strand: String,
+}
+
 struct ActiveChunk {
     chrom: String,
     start: u64,
@@ -342,6 +384,14 @@ fn main() -> Result<()> {
             } => build_chunks(
                 &input, &out, &assembly, bin_size, max_bytes, row_stride, limit,
             ),
+        },
+        Command::Genes { command } => match command {
+            GenesCommand::Build {
+                gtf,
+                out,
+                assembly,
+                source_url,
+            } => build_gene_index(&gtf, &out, &assembly, &source_url),
         },
         Command::Serve { root, bind } => serve_static(&root, &bind),
     }
@@ -1501,6 +1551,117 @@ fn safe_path_segment(value: &str) -> String {
             }
         })
         .collect()
+}
+
+fn build_gene_index(gtf: &Path, out_path: &Path, assembly: &str, source_url: &str) -> Result<()> {
+    if let Some(parent) = out_path.parent()
+        && !parent.as_os_str().is_empty()
+    {
+        fs::create_dir_all(parent)
+            .with_context(|| format!("creating output directory {}", parent.display()))?;
+    }
+
+    let reader = open_text_reader(gtf)?;
+    let mut genes = Vec::new();
+    let mut skipped = 0_u64;
+
+    for line in reader.lines() {
+        let line = line?;
+        if line.starts_with('#') || line.trim().is_empty() {
+            continue;
+        }
+
+        let columns: Vec<&str> = line.split('\t').collect();
+        if columns.len() < 9 || columns[2] != "gene" {
+            continue;
+        }
+
+        let Some(chrom) = normalize_gene_chrom(columns[0]) else {
+            skipped += 1;
+            continue;
+        };
+        let start = columns[3]
+            .parse::<u64>()
+            .with_context(|| format!("invalid gene start: {}", columns[3]))?;
+        let end = columns[4]
+            .parse::<u64>()
+            .with_context(|| format!("invalid gene end: {}", columns[4]))?;
+        let attrs = parse_gtf_attrs(columns[8]);
+        let Some(symbol) = attrs.get("gene_name") else {
+            skipped += 1;
+            continue;
+        };
+        let Some(gene_id) = attrs.get("gene_id") else {
+            skipped += 1;
+            continue;
+        };
+        let Some(gene_type) = attrs.get("gene_type") else {
+            skipped += 1;
+            continue;
+        };
+
+        genes.push(GeneIndexEntry {
+            symbol: symbol.clone(),
+            symbol_norm: symbol.to_ascii_uppercase(),
+            gene_id: gene_id.clone(),
+            gene_type: gene_type.clone(),
+            chrom,
+            start,
+            end,
+            strand: columns[6].to_string(),
+        });
+    }
+
+    genes.sort_by(|a, b| {
+        a.symbol_norm
+            .cmp(&b.symbol_norm)
+            .then_with(|| a.chrom.cmp(&b.chrom))
+            .then_with(|| a.start.cmp(&b.start))
+            .then_with(|| a.end.cmp(&b.end))
+    });
+
+    let index = GeneIndex {
+        format: "clinpatch-gene-coordinate-index".to_string(),
+        version: 1,
+        assembly: assembly.to_string(),
+        source_url: source_url.to_string(),
+        gene_count: genes.len() as u64,
+        genes,
+    };
+    let out = File::create(out_path).with_context(|| format!("creating {}", out_path.display()))?;
+    serde_json::to_writer(BufWriter::new(out), &index)?;
+
+    println!(
+        "wrote {} genes to {} ({skipped} skipped)",
+        index.gene_count,
+        out_path.display()
+    );
+    Ok(())
+}
+
+fn normalize_gene_chrom(raw: &str) -> Option<String> {
+    let chrom = raw.strip_prefix("chr").unwrap_or(raw);
+    let chrom = if chrom == "M" { "MT" } else { chrom };
+    if matches!(chrom, "X" | "Y" | "MT") {
+        return Some(chrom.to_string());
+    }
+    let numeric = chrom.parse::<u8>().ok()?;
+    (1..=22).contains(&numeric).then(|| numeric.to_string())
+}
+
+fn parse_gtf_attrs(raw: &str) -> std::collections::HashMap<String, String> {
+    let mut attrs = std::collections::HashMap::new();
+    for field in raw.split(';') {
+        let field = field.trim();
+        if field.is_empty() {
+            continue;
+        }
+        let Some((key, value)) = field.split_once(' ') else {
+            continue;
+        };
+        attrs.insert(key.to_string(), value.trim_matches('"').to_string());
+    }
+    attrs
 }
 
 fn serve_static(root: &Path, bind: &str) -> Result<()> {

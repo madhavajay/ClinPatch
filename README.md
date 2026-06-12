@@ -103,6 +103,98 @@ curl -H "Range: bytes=$POS_START-$POS_END" \
   "http://127.0.0.1:8765/$DATA_FILE"
 ```
 
+## Raw GitHub Range Query Example
+
+This example does not use the Rust tool or a local server. It curls the manifest from raw GitHub, finds chunks overlapping a chromosome interval, curls the matching position indexes from raw GitHub, then curls byte ranges from the raw GitHub chunk VCF files.
+
+```sh
+RAW_BASE="https://raw.githubusercontent.com/madhavajay/ClinPatch/main/public/chunks-demo"
+CHROM="1"
+START_POS=1041000
+END_POS=1054000
+
+MANIFEST="$(curl -s "$RAW_BASE/manifest.json")"
+
+printf '%s' "$MANIFEST" |
+jq -c --arg chrom "$CHROM" --argjson start "$START_POS" --argjson end "$END_POS" '
+  .chunks[]
+  | select(.chrom == $chrom and .start <= $end and .end >= $start)
+' |
+while read -r CHUNK; do
+  DATA_FILE="$(printf '%s' "$CHUNK" | jq -r '.data_file')"
+  POS_INDEX="$(printf '%s' "$CHUNK" | jq -r '.positions_index')"
+
+  curl -s "$RAW_BASE/$POS_INDEX" |
+  jq -c --argjson start "$START_POS" --argjson end "$END_POS" '
+    .positions[]
+    | select(.pos >= $start and .pos <= $end)
+    | .records[]
+  ' |
+  while read -r REC; do
+    OFFSET="$(printf '%s' "$REC" | jq -r '.offset')"
+    LENGTH="$(printf '%s' "$REC" | jq -r '.length')"
+    END_BYTE="$((OFFSET + LENGTH - 1))"
+
+    curl -s -H "Range: bytes=$OFFSET-$END_BYTE" "$RAW_BASE/$DATA_FILE"
+  done
+done
+```
+
+That interval returns real ClinVar VCF rows from the committed GRCh38 sample chunk files.
+
+## Raw GitHub Gene Query Example
+
+This example resolves a gene symbol through a static GENCODE v50 GRCh38 gene index, then uses simple coordinate overlap to fetch ClinVar rows from raw GitHub.
+
+The gene mapping is:
+
+```text
+variant.chrom = gene.chrom
+variant.pos BETWEEN gene.start AND gene.end
+```
+
+It uses GENCODE's GRCh38 coordinates, not gnomAD-derived gene mapping.
+
+```sh
+RAW_BASE="https://raw.githubusercontent.com/madhavajay/ClinPatch/main/public/chunks-demo"
+GENE_INDEX_URL="https://raw.githubusercontent.com/madhavajay/ClinPatch/main/public/genes/gencode.v50.GRCh38.genes.json"
+GENE="AGRN"
+
+GENE_RECORD="$(curl -s "$GENE_INDEX_URL" |
+  jq -c --arg gene "$GENE" '.genes[] | select(.symbol_norm == ($gene | ascii_upcase))' |
+  head -n 1)"
+
+CHROM="$(printf '%s' "$GENE_RECORD" | jq -r '.chrom')"
+START_POS="$(printf '%s' "$GENE_RECORD" | jq -r '.start')"
+END_POS="$(printf '%s' "$GENE_RECORD" | jq -r '.end')"
+
+MANIFEST="$(curl -s "$RAW_BASE/manifest.json")"
+
+printf '%s' "$MANIFEST" |
+jq -c --arg chrom "$CHROM" --argjson start "$START_POS" --argjson end "$END_POS" '
+  .chunks[]
+  | select(.chrom == $chrom and .start <= $end and .end >= $start)
+' |
+while read -r CHUNK; do
+  DATA_FILE="$(printf '%s' "$CHUNK" | jq -r '.data_file')"
+  POS_INDEX="$(printf '%s' "$CHUNK" | jq -r '.positions_index')"
+
+  curl -s "$RAW_BASE/$POS_INDEX" |
+  jq -c --argjson start "$START_POS" --argjson end "$END_POS" '
+    .positions[]
+    | select(.pos >= $start and .pos <= $end)
+    | .records[]
+  ' |
+  while read -r REC; do
+    OFFSET="$(printf '%s' "$REC" | jq -r '.offset')"
+    LENGTH="$(printf '%s' "$REC" | jq -r '.length')"
+    END_BYTE="$((OFFSET + LENGTH - 1))"
+
+    curl -s -H "Range: bytes=$OFFSET-$END_BYTE" "$RAW_BASE/$DATA_FILE"
+  done
+done
+```
+
 ## Patch Streams
 
 The standalone release patch path is separate from hosted shard replacement. The prototype command still emits a full `changes.jsonl.gz` patch stream:

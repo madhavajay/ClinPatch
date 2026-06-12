@@ -1,0 +1,78 @@
+{
+  "format": "clinpatch-coordinate-chunks",
+  "version": 1,
+  "assembly": "GRCh38",
+  "source_file": "public/clinvar.GRCh38.sample.vcf",
+  "bin_size": 1000000,
+  "max_bytes": 1000000,
+  "row_stride": 128,
+  "chunk_count": 5,
+  "row_count": 10000,
+  "chunks": [
+    {
+      "chrom": "1",
+      "start": 1,
+      "end": 1000000,
+      "part": 1,
+      "data_file": "chunks/1/000000000001-000001000000.vcf",
+      "rows_index": "chunks/1/000000000001-000001000000.vcf.rows.json",
+      "ids_index": "chunks/1/000000000001-000001000000.vcf.ids.json",
+      "positions_index": "chunks/1/000000000001-000001000000.vcf.positions.json",
+      "file_size": 674512,
+      "row_count": 1814,
+      "file_hash_sha256": "9f06cf1b5d31ebfb295dd78fe55ed16c620b791876b94f7f6a146f7615006713"
+    },
+    {
+      "chrom": "1",
+      "start": 1000001,
+      "end": 2000000,
+      "part": 1,
+      "data_file": "chunks/1/000001000001-000002000000.vcf",
+      "rows_index": "chunks/1/000001000001-000002000000.vcf.rows.json",
+      "ids_index": "chunks/1/000001000001-000002000000.vcf.ids.json",
+      "positions_index": "chunks/1/000001000001-000002000000.vcf.positions.json",
+      "file_size": 999965,
+      "row_count": 2183,
+      "file_hash_sha256": "f57ecbd9717b7fe86720c046feef1dbe7908556775625b009619580bafe74670"
+    },
+    {
+      "chrom": "1",
+      "start": 1000001,
+      "end": 2000000,
+      "part": 2,
+      "data_file": "chunks/1/000001000001-000002000000.part2.vcf",
+      "rows_index": "chunks/1/000001000001-000002000000.part2.vcf.rows.json",
+      "ids_index": "chunks/1/000001000001-000002000000.part2.vcf.ids.json",
+      "positions_index": "chunks/1/000001000001-000002000000.part2.vcf.positions.json",
+      "file_size": 999991,
+      "row_count": 2325,
+      "file_hash_sha256": "b689c75ca4dbe285ebc62a03a78b2bc1bd9ceb952eccc9f30eb257955105634c"
+    },
+    {
+      "chrom": "1",
+      "start": 1000001,
+      "end": 2000000,
+      "part": 3,
+      "data_file": "chunks/1/000001000001-000002000000.part3.vcf",
+      "rows_index": "chunks/1/000001000001-000002000000.part3.vcf.rows.json",
+      "ids_index": "chunks/1/000001000001-000002000000.part3.vcf.ids.json",
+      "positions_index": "chunks/1/000001000001-000002000000.part3.vcf.positions.json",
+      "file_size": 999422,
+      "row_count": 2671,
+      "file_hash_sha256": "c4441a33d8a30d440f316aa6d6d80c3727b78d72205f0143c48c495d5f022b34"
+    },
+    {
+      "chrom": "1",
+      "start": 1000001,
+      "end": 2000000,
+      "part": 4,
+      "data_file": "chunks/1/000001000001-000002000000.part4.vcf",
+      "rows_index": "chunks/1/000001000001-000002000000.part4.vcf.rows.json",
+      "ids_index": "chunks/1/000001000001-000002000000.part4.vcf.ids.json",
+      "positions_index": "chunks/1/000001000001-000002000000.part4.vcf.positions.json",
+      "file_size": 399209,
+      "row_count": 1007,
+      "file_hash_sha256": "9a116c8efc21230b11dcf56a3f0037fba317d5e2c85404ef58b4b423b15ba4b9"
+    }
+  ]
+}

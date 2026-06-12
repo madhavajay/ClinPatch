@@ -1,0 +1,68 @@
+{
+  "format": "clinvar-row-byte-index",
+  "version": 1,
+  "data_file": "000001000001-000002000000.part4.vcf",
+  "file_size": 399209,
+  "file_hash_sha256": "9a116c8efc21230b11dcf56a3f0037fba317d5e2c85404ef58b4b423b15ba4b9",
+  "row_count": 1007,
+  "header_bytes": 6407,
+  "stride": 128,
+  "checkpoints": [
+    {
+      "row": 1,
+      "offset": 6407,
+      "chrom": "1",
+      "pos": 1520184,
+      "id": "1307194"
+    },
+    {
+      "row": 129,
+      "offset": 60253,
+      "chrom": "1",
+      "pos": 1524278,
+      "id": "3895875"
+    },
+    {
+      "row": 257,
+      "offset": 112895,
+      "chrom": "1",
+      "pos": 1533962,
+      "id": "1705978"
+    },
+    {
+      "row": 385,
+      "offset": 169166,
+      "chrom": "1",
+      "pos": 1535637,
+      "id": "718920"
+    },
+    {
+      "row": 513,
+      "offset": 217518,
+      "chrom": "1",
+      "pos": 1623445,
+      "id": "3126109"
+    },
+    {
+      "row": 641,
+      "offset": 265357,
+      "chrom": "1",
+      "pos": 1627387,
+      "id": "2597636"
+    },
+    {
+      "row": 769,
+      "offset": 313406,
+      "chrom": "1",
+      "pos": 1630315,
+      "id": "4551522"
+    },
+    {
+      "row": 897,
+      "offset": 357527,
+      "chrom": "1",
+      "pos": 1675499,
+      "id": "4585505"
+    }
+  ]
+}
