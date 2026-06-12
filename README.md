@@ -62,17 +62,17 @@ curl http://127.0.0.1:8765/manifest.json
 Pick the first chunk data file from the manifest:
 
 ```sh
-DATA_FILE="$(curl -s http://127.0.0.1:8765/manifest.json | jq -r '.chunks[0].data_file')"
-ROWS_INDEX="$(curl -s http://127.0.0.1:8765/manifest.json | jq -r '.chunks[0].rows_index')"
-IDS_INDEX="$(curl -s http://127.0.0.1:8765/manifest.json | jq -r '.chunks[0].ids_index')"
-POSITIONS_INDEX="$(curl -s http://127.0.0.1:8765/manifest.json | jq -r '.chunks[0].positions_index')"
+DATA_FILE="$(curl -fsSL http://127.0.0.1:8765/manifest.json | jq -r '.chunks[0].data_file')"
+ROWS_INDEX="$(curl -fsSL http://127.0.0.1:8765/manifest.json | jq -r '.chunks[0].rows_index')"
+IDS_INDEX="$(curl -fsSL http://127.0.0.1:8765/manifest.json | jq -r '.chunks[0].ids_index')"
+POSITIONS_INDEX="$(curl -fsSL http://127.0.0.1:8765/manifest.json | jq -r '.chunks[0].positions_index')"
 ```
 
 Fetch the first data row in that chunk by byte range:
 
 ```sh
-START="$(curl -s "http://127.0.0.1:8765/$ROWS_INDEX" | jq -r '.checkpoints[0].offset')"
-NEXT="$(curl -s "http://127.0.0.1:8765/$ROWS_INDEX" | jq -r '.checkpoints[1].offset')"
+START="$(curl -fsSL "http://127.0.0.1:8765/$ROWS_INDEX" | jq -r '.checkpoints[0].offset')"
+NEXT="$(curl -fsSL "http://127.0.0.1:8765/$ROWS_INDEX" | jq -r '.checkpoints[1].offset')"
 END="$((NEXT - 1))"
 
 curl -H "Range: bytes=$START-$END" \
@@ -82,7 +82,7 @@ curl -H "Range: bytes=$START-$END" \
 Fetch one exact ClinVar Variation ID from the ID index:
 
 ```sh
-ID_RECORD="$(curl -s "http://127.0.0.1:8765/$IDS_INDEX" | jq -r '.records[0]')"
+ID_RECORD="$(curl -fsSL "http://127.0.0.1:8765/$IDS_INDEX" | jq -r '.records[0]')"
 ID_START="$(printf '%s' "$ID_RECORD" | jq -r '.offset')"
 ID_LENGTH="$(printf '%s' "$ID_RECORD" | jq -r '.length')"
 ID_END="$((ID_START + ID_LENGTH - 1))"
@@ -94,7 +94,7 @@ curl -H "Range: bytes=$ID_START-$ID_END" \
 Fetch all records at the first indexed chromosome/position:
 
 ```sh
-POS_RECORD="$(curl -s "http://127.0.0.1:8765/$POSITIONS_INDEX" | jq -r '.positions[0].records[0]')"
+POS_RECORD="$(curl -fsSL "http://127.0.0.1:8765/$POSITIONS_INDEX" | jq -r '.positions[0].records[0]')"
 POS_START="$(printf '%s' "$POS_RECORD" | jq -r '.offset')"
 POS_LENGTH="$(printf '%s' "$POS_RECORD" | jq -r '.length')"
 POS_END="$((POS_START + POS_LENGTH - 1))"
@@ -113,7 +113,7 @@ CHROM="1"
 START_POS=1041000
 END_POS=1054000
 
-MANIFEST="$(curl -s "$RAW_BASE/manifest.json")"
+MANIFEST="$(curl -fsSL "$RAW_BASE/manifest.json")"
 
 printf '%s' "$MANIFEST" |
 jq -c --arg chrom "$CHROM" --argjson start "$START_POS" --argjson end "$END_POS" '
@@ -124,7 +124,7 @@ while read -r CHUNK; do
   DATA_FILE="$(printf '%s' "$CHUNK" | jq -r '.data_file')"
   POS_INDEX="$(printf '%s' "$CHUNK" | jq -r '.positions_index')"
 
-  curl -s "$RAW_BASE/$POS_INDEX" |
+  curl -fsSL "$RAW_BASE/$POS_INDEX" |
   jq -c --argjson start "$START_POS" --argjson end "$END_POS" '
     .positions[]
     | select(.pos >= $start and .pos <= $end)
@@ -135,7 +135,7 @@ while read -r CHUNK; do
     LENGTH="$(printf '%s' "$REC" | jq -r '.length')"
     END_BYTE="$((OFFSET + LENGTH - 1))"
 
-    curl -s -H "Range: bytes=$OFFSET-$END_BYTE" "$RAW_BASE/$DATA_FILE"
+    curl -fsSL --range "$OFFSET-$END_BYTE" "$RAW_BASE/$DATA_FILE"
   done
 done
 ```
@@ -160,7 +160,7 @@ RAW_BASE="https://raw.githubusercontent.com/madhavajay/ClinPatch/main/public/chu
 GENE_INDEX_URL="https://raw.githubusercontent.com/madhavajay/ClinPatch/main/public/genes/gencode.v50.GRCh38.genes.json"
 GENE="AGRN"
 
-GENE_RECORD="$(curl -s "$GENE_INDEX_URL" |
+GENE_RECORD="$(curl -fsSL "$GENE_INDEX_URL" |
   jq -c --arg gene "$GENE" '.genes[] | select(.symbol_norm == ($gene | ascii_upcase))' |
   head -n 1)"
 
@@ -168,7 +168,7 @@ CHROM="$(printf '%s' "$GENE_RECORD" | jq -r '.chrom')"
 START_POS="$(printf '%s' "$GENE_RECORD" | jq -r '.start')"
 END_POS="$(printf '%s' "$GENE_RECORD" | jq -r '.end')"
 
-MANIFEST="$(curl -s "$RAW_BASE/manifest.json")"
+MANIFEST="$(curl -fsSL "$RAW_BASE/manifest.json")"
 
 printf '%s' "$MANIFEST" |
 jq -c --arg chrom "$CHROM" --argjson start "$START_POS" --argjson end "$END_POS" '
@@ -179,7 +179,7 @@ while read -r CHUNK; do
   DATA_FILE="$(printf '%s' "$CHUNK" | jq -r '.data_file')"
   POS_INDEX="$(printf '%s' "$CHUNK" | jq -r '.positions_index')"
 
-  curl -s "$RAW_BASE/$POS_INDEX" |
+  curl -fsSL "$RAW_BASE/$POS_INDEX" |
   jq -c --argjson start "$START_POS" --argjson end "$END_POS" '
     .positions[]
     | select(.pos >= $start and .pos <= $end)
@@ -190,7 +190,7 @@ while read -r CHUNK; do
     LENGTH="$(printf '%s' "$REC" | jq -r '.length')"
     END_BYTE="$((OFFSET + LENGTH - 1))"
 
-    curl -s -H "Range: bytes=$OFFSET-$END_BYTE" "$RAW_BASE/$DATA_FILE"
+    curl -fsSL --range "$OFFSET-$END_BYTE" "$RAW_BASE/$DATA_FILE"
   done
 done
 ```
