@@ -1,0 +1,26 @@
+{
+  "format": "clinpatch-coordinate-chunks",
+  "version": 1,
+  "assembly": "GRCh38",
+  "source_file": "/Users/madhavajay/dev/clinvar/2026-05-23/clinvar.GRCh38.vcf.gz",
+  "bin_size": 1000000,
+  "max_bytes": 45000000,
+  "row_stride": 128,
+  "chunk_count": 1,
+  "row_count": 15141,
+  "chunks": [
+    {
+      "chrom": "17",
+      "start": 43000001,
+      "end": 44000000,
+      "part": 1,
+      "data_file": "chunks/17/000043000001-000044000000.vcf",
+      "rows_index": "chunks/17/000043000001-000044000000.vcf.rows.json",
+      "ids_index": "chunks/17/000043000001-000044000000.vcf.ids.json",
+      "positions_index": "chunks/17/000043000001-000044000000.vcf.positions.json",
+      "file_size": 8844284,
+      "row_count": 15141,
+      "file_hash_sha256": "22d502e831a8dc10f7d60814f737151d17b46bdc1fddcd888483cffe14f74122"
+    }
+  ]
+}

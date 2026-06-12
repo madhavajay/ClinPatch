@@ -108,7 +108,7 @@ curl -H "Range: bytes=$POS_START-$POS_END" \
 This example does not use the Rust tool or a local server. It curls the manifest from raw GitHub, finds chunks overlapping a chromosome interval, curls the matching position indexes from raw GitHub, then curls byte ranges from the raw GitHub chunk VCF files.
 
 ```sh
-RAW_BASE="https://raw.githubusercontent.com/madhavajay/ClinPatch/main/public/chunks-demo"
+RAW_BASE="https://raw.githubusercontent.com/madhavajay/ClinPatch/main/public/chunks-brca1"
 CHROM="1"
 START_POS=1041000
 END_POS=1054000
@@ -142,9 +142,15 @@ done
 
 That interval returns real ClinVar VCF rows from the committed GRCh38 sample chunk files.
 
-## Raw GitHub Gene Query Example
+## Raw GitHub BRCA1 Query Example
 
 This example resolves a gene symbol through a static GENCODE v50 GRCh38 gene index, then uses simple coordinate overlap to fetch ClinVar rows from raw GitHub.
+
+The easiest way to run this demo is:
+
+```sh
+./demo.sh
+```
 
 The gene mapping is:
 
@@ -156,7 +162,7 @@ variant.pos BETWEEN gene.start AND gene.end
 It uses GENCODE's GRCh38 coordinates, not gnomAD-derived gene mapping.
 
 ```sh
-RAW_BASE="https://raw.githubusercontent.com/madhavajay/ClinPatch/main/public/chunks-demo"
+RAW_BASE="https://raw.githubusercontent.com/madhavajay/ClinPatch/main/public/chunks-brca1"
 GENE_INDEX_URL="https://raw.githubusercontent.com/madhavajay/ClinPatch/main/public/genes/gencode.v50.GRCh38.genes.json"
 GENE="AGRN"
 

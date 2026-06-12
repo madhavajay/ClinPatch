@@ -134,6 +134,8 @@ enum ChunksCommand {
         row_stride: u64,
         #[arg(long)]
         limit: Option<u64>,
+        #[arg(long)]
+        region: Option<String>,
     },
 }
 
@@ -325,6 +327,21 @@ struct ActiveChunk {
     estimated_bytes: u64,
 }
 
+struct RegionFilter {
+    chrom: String,
+    start: u64,
+    end: u64,
+}
+
+struct ChunkBuildOptions<'a> {
+    assembly: &'a str,
+    bin_size: u64,
+    max_bytes: u64,
+    row_stride: u64,
+    limit: Option<u64>,
+    region: Option<&'a str>,
+}
+
 impl From<&VcfRecord> for PatchVcfRecord {
     fn from(record: &VcfRecord) -> Self {
         Self {
@@ -381,8 +398,18 @@ fn main() -> Result<()> {
                 max_bytes,
                 row_stride,
                 limit,
+                region,
             } => build_chunks(
-                &input, &out, &assembly, bin_size, max_bytes, row_stride, limit,
+                &input,
+                &out,
+                ChunkBuildOptions {
+                    assembly: &assembly,
+                    bin_size,
+                    max_bytes,
+                    row_stride,
+                    limit,
+                    region: region.as_deref(),
+                },
             ),
         },
         Command::Genes { command } => match command {
@@ -1301,19 +1328,11 @@ fn indexed_byte_range(index: &RowIndex, start: u64, end: u64) -> Result<(u64, Op
     Ok((start_checkpoint.offset, end_offset, start_checkpoint.row))
 }
 
-fn build_chunks(
-    input: &Path,
-    out_dir: &Path,
-    assembly: &str,
-    bin_size: u64,
-    max_bytes: u64,
-    row_stride: u64,
-    limit: Option<u64>,
-) -> Result<()> {
-    if bin_size == 0 {
+fn build_chunks(input: &Path, out_dir: &Path, options: ChunkBuildOptions<'_>) -> Result<()> {
+    if options.bin_size == 0 {
         bail!("--bin-size must be greater than zero");
     }
-    if row_stride == 0 {
+    if options.row_stride == 0 {
         bail!("--row-stride must be greater than zero");
     }
 
@@ -1323,6 +1342,7 @@ fn build_chunks(
     fs::create_dir_all(&chunks_dir)
         .with_context(|| format!("creating chunks directory {}", chunks_dir.display()))?;
 
+    let region = options.region.map(parse_region).transpose()?;
     let mut reader = open_text_reader(input)?;
     let mut header = Vec::new();
     let mut line = String::new();
@@ -1348,12 +1368,17 @@ fn build_chunks(
         }
 
         let (chrom, pos) = chrom_pos_from_line(total_rows + 1, &line)?;
-        let (start, end) = coordinate_bin(pos, bin_size)?;
+        if let Some(region) = &region
+            && (chrom != region.chrom || pos < region.start || pos > region.end)
+        {
+            continue;
+        }
+        let (start, end) = coordinate_bin(pos, options.bin_size)?;
         let key = (chrom.clone(), start, end);
 
         if current_key.as_ref() != Some(&key) {
             if let Some(chunk) = active.take() {
-                chunks.push(finalize_chunk(chunk, out_dir, row_stride)?);
+                chunks.push(finalize_chunk(chunk, out_dir, options.row_stride)?);
             }
             current_key = Some(key);
             current_part = 1;
@@ -1371,9 +1396,11 @@ fn build_chunks(
             .as_ref()
             .map(|chunk| chunk.estimated_bytes + bytes as u64)
             .unwrap_or(bytes as u64);
-        if projected_bytes > max_bytes && active.as_ref().is_some_and(|chunk| chunk.row_count > 0) {
+        if projected_bytes > options.max_bytes
+            && active.as_ref().is_some_and(|chunk| chunk.row_count > 0)
+        {
             let chunk = active.take().context("missing active chunk")?;
-            chunks.push(finalize_chunk(chunk, out_dir, row_stride)?);
+            chunks.push(finalize_chunk(chunk, out_dir, options.row_stride)?);
             current_part += 1;
             active = Some(open_chunk(
                 &chunks_dir,
@@ -1391,7 +1418,7 @@ fn build_chunks(
         chunk.estimated_bytes += bytes as u64;
         total_rows += 1;
 
-        if let Some(limit) = limit
+        if let Some(limit) = options.limit
             && total_rows >= limit
         {
             break;
@@ -1402,17 +1429,17 @@ fn build_chunks(
     }
 
     if let Some(chunk) = active.take() {
-        chunks.push(finalize_chunk(chunk, out_dir, row_stride)?);
+        chunks.push(finalize_chunk(chunk, out_dir, options.row_stride)?);
     }
 
     let manifest = ChunkManifest {
         format: "clinpatch-coordinate-chunks".to_string(),
         version: 1,
-        assembly: assembly.to_string(),
+        assembly: options.assembly.to_string(),
         source_file: input.display().to_string(),
-        bin_size,
-        max_bytes,
-        row_stride,
+        bin_size: options.bin_size,
+        max_bytes: options.max_bytes,
+        row_stride: options.row_stride,
         chunk_count: chunks.len() as u64,
         row_count: total_rows,
         chunks,
@@ -1454,6 +1481,40 @@ fn coordinate_bin(pos: u64, bin_size: u64) -> Result<(u64, u64)> {
         .checked_add(bin_size - 1)
         .context("coordinate bin overflows u64")?;
     Ok((start, end))
+}
+
+fn parse_region(region: &str) -> Result<RegionFilter> {
+    let (chrom, range) = region
+        .split_once(':')
+        .with_context(|| format!("region must be CHROM:START-END, got {region}"))?;
+    let (start, end) = range
+        .split_once('-')
+        .with_context(|| format!("region must be CHROM:START-END, got {region}"))?;
+    let start = start
+        .replace(',', "")
+        .parse::<u64>()
+        .with_context(|| format!("invalid region start in {region}"))?;
+    let end = end
+        .replace(',', "")
+        .parse::<u64>()
+        .with_context(|| format!("invalid region end in {region}"))?;
+    if start == 0 || start > end {
+        bail!("invalid region coordinates in {region}");
+    }
+    Ok(RegionFilter {
+        chrom: normalize_query_chrom(chrom),
+        start,
+        end,
+    })
+}
+
+fn normalize_query_chrom(raw: &str) -> String {
+    let chrom = raw.strip_prefix("chr").unwrap_or(raw);
+    if chrom == "M" {
+        "MT".to_string()
+    } else {
+        chrom.to_string()
+    }
 }
 
 fn open_chunk(

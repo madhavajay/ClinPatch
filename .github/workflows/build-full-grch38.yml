@@ -1,0 +1,60 @@
+name: Build Full GRCh38 Chunks
+
+on:
+  workflow_dispatch:
+    inputs:
+      bin_size:
+        description: Coordinate bin size
+        required: true
+        default: "1000000"
+      max_bytes:
+        description: Maximum plain VCF chunk size
+        required: true
+        default: "45000000"
+
+jobs:
+  build-full-grch38:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Build clinpatch
+        run: cargo build --release
+
+      - name: Download latest ClinVar GRCh38
+        run: |
+          mkdir -p data/downloads/GRCh38
+          curl -fsSL \
+            https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar.vcf.gz \
+            -o data/downloads/GRCh38/clinvar.vcf.gz
+          curl -fsSL \
+            https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar.vcf.gz.md5 \
+            -o data/downloads/GRCh38/clinvar.vcf.gz.md5
+
+      - name: Build coordinate chunks
+        run: |
+          ./target/release/clinpatch chunks build \
+            data/downloads/GRCh38/clinvar.vcf.gz \
+            --out data/static/GRCh38/latest \
+            --assembly GRCh38 \
+            --bin-size "${{ inputs.bin_size }}" \
+            --max-bytes "${{ inputs.max_bytes }}" \
+            --row-stride 128
+
+      - name: Verify manifest
+        run: |
+          test -f data/static/GRCh38/latest/manifest.json
+          python -m json.tool data/static/GRCh38/latest/manifest.json >/dev/null
+
+      - name: Upload full GRCh38 chunks
+        uses: actions/upload-artifact@v4
+        with:
+          name: clinpatch-grch38-latest-chunks
+          path: data/static/GRCh38/latest
