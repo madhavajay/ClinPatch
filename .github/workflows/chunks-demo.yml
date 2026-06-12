@@ -1,0 +1,57 @@
+name: Build ClinVar Chunks Demo
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - Cargo.toml
+      - Cargo.lock
+      - src/**
+      - public/clinvar.GRCh38.sample.vcf
+      - .github/workflows/chunks-demo.yml
+
+jobs:
+  chunks-demo:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Run Clippy
+        run: cargo clippy -- -D warnings
+
+      - name: Run tests
+        run: cargo test
+
+      - name: Build clinpatch
+        run: cargo build --release
+
+      - name: Generate coordinate chunks
+        run: |
+          ./target/release/clinpatch chunks build \
+            public/clinvar.GRCh38.sample.vcf \
+            --out tmp/chunks-demo \
+            --assembly GRCh38 \
+            --bin-size 1000000 \
+            --max-bytes 1000000 \
+            --row-stride 128
+
+      - name: Verify manifest
+        run: |
+          test -f tmp/chunks-demo/manifest.json
+          python -m json.tool tmp/chunks-demo/manifest.json >/dev/null
+
+      - name: Upload chunks artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: clinpatch-chunks-demo
+          path: tmp/chunks-demo

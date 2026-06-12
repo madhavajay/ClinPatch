@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ClinVar Range Search</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <section class="toolbar">
+        <div>
+          <h1>ClinVar Range Search</h1>
+          <p>Static HTTP demo: the browser loads index files, computes byte ranges, then fetches only the matching VCF bytes.</p>
+        </div>
+        <button id="reload-indexes" type="button">Reload Indexes</button>
+      </section>
+
+      <section class="panel status-grid" aria-label="Index status">
+        <div>
+          <span class="label">Data file</span>
+          <strong id="data-file">-</strong>
+        </div>
+        <div>
+          <span class="label">Rows</span>
+          <strong id="row-count">-</strong>
+        </div>
+        <div>
+          <span class="label">ID entries</span>
+          <strong id="id-count">-</strong>
+        </div>
+        <div>
+          <span class="label">Positions</span>
+          <strong id="position-count">-</strong>
+        </div>
+        <div>
+          <span class="label">Row stride</span>
+          <strong id="row-stride">-</strong>
+        </div>
+      </section>
+
+      <section class="grid">
+        <form class="panel" id="position-search">
+          <h2>Search By Chromosome And Position</h2>
+          <div class="input-row two">
+            <input id="chrom" autocomplete="off" placeholder="Chromosome" value="1">
+            <input id="position" autocomplete="off" inputmode="numeric" placeholder="Position" value="926026">
+            <button type="submit">Search</button>
+          </div>
+          <p class="hint">Uses <code>clinvar.GRCh38.sample.vcf.positions.json</code> to fetch all VCF rows at one coordinate.</p>
+        </form>
+
+        <form class="panel" id="id-search">
+          <h2>Search By ClinVar Variation ID</h2>
+          <div class="input-row">
+            <input id="variation-id" autocomplete="off" inputmode="numeric" placeholder="Example: 1168967">
+            <button type="submit">Search</button>
+          </div>
+          <p class="hint">Uses <code>clinvar.GRCh38.sample.vcf.ids.json</code> to fetch one exact VCF row by byte range.</p>
+        </form>
+
+        <form class="panel" id="row-search">
+          <h2>Fetch Rows</h2>
+          <div class="input-row two">
+            <input id="row-start" inputmode="numeric" placeholder="Start row" value="1000">
+            <input id="row-count-input" inputmode="numeric" placeholder="Count" value="5">
+            <button type="submit">Fetch</button>
+          </div>
+          <p class="hint">Uses <code>clinvar.GRCh38.sample.vcf.rows.json</code>. The browser trims checkpoint overfetch locally.</p>
+        </form>
+      </section>
+
+      <section class="panel">
+        <div class="result-header">
+          <h2>Result</h2>
+          <span id="range-used">No request yet</span>
+        </div>
+        <div id="message" role="status"></div>
+        <pre id="result"></pre>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

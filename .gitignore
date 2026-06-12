@@ -1,0 +1,17 @@
+/target/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# Full ClinVar downloads and generated production data are too large for normal Git.
+/.clinpatch/
+/data/static/
+/data/releases/*/*/*.vcf
+/data/releases/*/*/*.vcf.gz
+/data/releases/*/*/*.tbi
+/data/patches/*/*/diff-work.sqlite
+
+# Local smoke-test output.
+/tmp/
+/scratch/
+/smoke-*/
